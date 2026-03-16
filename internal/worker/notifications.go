@@ -303,7 +303,7 @@ func (nc *notificationsConsumer) Consume(delivery rmq.Delivery) {
 		_ = nc.statsd.Histogram("apollo.queue.delay", float64(latency.Milliseconds()), []string{}, 0.1)
 
 		notification := &apns2.Notification{}
-		notification.Topic = "com.christianselig.Apollo"
+		notification.Topic = os.Getenv("APPLE_BUNDLE_ID")
 		notification.Payload = payloadFromMessage(account, msg, msgs.Count)
 
 		client := nc.papns

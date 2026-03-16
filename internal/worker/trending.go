@@ -250,7 +250,7 @@ func (tc *trendingConsumer) Consume(delivery rmq.Delivery) {
 		}
 
 		notification := &apns2.Notification{}
-		notification.Topic = "com.christianselig.Apollo"
+		notification.Topic = os.Getenv("APPLE_BUNDLE_ID")
 		notification.Payload = payloadFromTrendingPost(post)
 
 		for _, watcher := range watchers {

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"go.uber.org/zap"
 
 	"github.com/christianselig/apollo-backend/internal/domain"
 	"github.com/christianselig/apollo-backend/internal/itunes"
@@ -21,58 +20,30 @@ func (a *api) checkReceiptHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	apns := vars["apns"]
 
-	body, _ := ioutil.ReadAll(r.Body)
-	iapr, err := itunes.NewIAPResponse(string(body), true)
+	// Discard the receipt body — no validation is performed on a self-hosted server
+	// because sideloaded apps cannot use App Store in-app purchases.
+	_, _ = ioutil.ReadAll(r.Body)
 
-	if err != nil {
-		// treat as if it's a valid subscription, given that this is not the user's fault
-		if apns != "" {
-			dev, err := a.deviceRepo.GetByAPNSToken(ctx, apns)
-			if err != nil {
-				a.errorResponse(w, r, 500, err)
-				return
-			}
-
-			dev.ExpiresAt = time.Now().Add(domain.DeviceActiveAfterReceitCheckDuration)
-			dev.GracePeriodExpiresAt = dev.ExpiresAt.Add(domain.DeviceGracePeriodAfterReceiptExpiry)
-			_ = a.deviceRepo.Update(ctx, &dev)
-		}
-
-		a.logger.Info("failed to verify receipt", zap.Error(err))
-		a.errorResponse(w, r, 500, err)
-		return
-	}
-
+	// Always treat the device as having a valid lifetime subscription.
 	if apns != "" {
 		dev, err := a.deviceRepo.GetByAPNSToken(ctx, apns)
-		if err != nil {
-			a.errorResponse(w, r, 500, err)
-			return
-		}
-
-		if iapr.DeleteDevice {
-			if dev.GracePeriodExpiresAt.Before(time.Now()) {
-				accs, err := a.accountRepo.GetByAPNSToken(ctx, apns)
-				if err != nil {
-					a.errorResponse(w, r, 500, err)
-					return
-				}
-
-				for _, acc := range accs {
-					_ = a.accountRepo.Disassociate(ctx, &acc, &dev)
-				}
-
-				_ = a.deviceRepo.Delete(ctx, apns)
-			}
-		} else {
+		if err == nil {
 			dev.ExpiresAt = time.Now().Add(domain.DeviceActiveAfterReceitCheckDuration)
 			dev.GracePeriodExpiresAt = dev.ExpiresAt.Add(domain.DeviceGracePeriodAfterReceiptExpiry)
 			_ = a.deviceRepo.Update(ctx, &dev)
 		}
+	}
+
+	info := itunes.ClientVerificationInfo{
+		Products: []itunes.VerificationProduct{
+			{Name: "ultra", Status: "LIFETIME", SubscriptionType: "LIFETIME"},
+			{Name: "pro", Status: "LIFETIME"},
+			{Name: "community_icons", Status: "LIFETIME"},
+			{Name: "spca", Status: "LIFETIME"},
+		},
 	}
 
 	w.WriteHeader(http.StatusOK)
-
-	bb, _ := json.Marshal(iapr.VerificationInfo)
+	bb, _ := json.Marshal(info)
 	_, _ = w.Write(bb)
 }

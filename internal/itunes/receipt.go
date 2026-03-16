@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
@@ -180,7 +181,7 @@ func NewIAPResponse(receipt string, production bool) (*IAPResponse, error) {
 
 	verificationPayload := map[string]string{
 		"receipt-data": receipt,
-		"password":     "***REMOVED***",
+		"password":     os.Getenv("APPLE_SHARED_SECRET"),
 	}
 
 	bb, err := json.Marshal(verificationPayload)

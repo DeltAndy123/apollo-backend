@@ -100,6 +100,7 @@ func (a *api) Routes() *mux.Router {
 	r := mux.NewRouter()
 
 	r.HandleFunc("/v1/health", a.healthCheckHandler).Methods("GET")
+	r.HandleFunc("/v1/bundle_id", a.bundleIDHandler).Methods("GET")
 
 	r.HandleFunc("/v1/device", a.upsertDeviceHandler).Methods("POST")
 	r.HandleFunc("/v1/device/{apns}", a.deleteDeviceHandler).Methods("DELETE")

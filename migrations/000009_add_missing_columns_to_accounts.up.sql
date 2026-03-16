@@ -1,0 +1,3 @@
+ALTER TABLE accounts
+    ADD COLUMN IF NOT EXISTS is_deleted boolean NOT NULL DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS development boolean NOT NULL DEFAULT FALSE;

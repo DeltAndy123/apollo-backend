@@ -435,7 +435,7 @@ func (sc *subredditsConsumer) Consume(delivery rmq.Delivery) {
 			payload.AlertBody(body)
 
 			notification := &apns2.Notification{}
-			notification.Topic = "com.christianselig.Apollo"
+			notification.Topic = os.Getenv("APPLE_BUNDLE_ID")
 			notification.DeviceToken = watcher.Device.APNSToken
 			notification.Payload = payload
 

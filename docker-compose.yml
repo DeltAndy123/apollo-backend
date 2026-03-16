@@ -1,0 +1,183 @@
+name: apollo-backend
+
+# Shared infrastructure URLs injected into every app service.
+# These match the service names and ports defined below.
+x-infra-env: &infra-env
+  # No query string here — NewDatabasePool appends ?pool_max_conns=N&pool_min_conns=2,
+  # so any existing ? would produce an invalid double-? URL.
+  # pgx defaults to sslmode=prefer which falls back to unencrypted automatically.
+  DATABASE_CONNECTION_POOL_URL: postgres://apollo:apollo@postgres/apollo
+  REDIS_URL: redis://redis-queues:6379
+  REDIS_QUEUE_URL: redis://redis-queues:6379
+  REDIS_LOCKS_URL: redis://redis-locks:6379
+  ENV: development
+  # StatsD client requires an address; UDP to localhost silently drops metrics when
+  # nothing is listening, which is fine for local development.
+  STATSD_URL: localhost:8125
+  # Point OTLP at the OTel Collector (accepts traces, metrics, and logs).
+  OTEL_EXPORTER_OTLP_ENDPOINT: "otelcol:4317"
+  # OTel Collector gRPC is plaintext in our setup.
+  OTEL_EXPORTER_OTLP_INSECURE: "true"
+
+# Base definition shared by every Go service.
+# build: is intentionally NOT in this anchor — only the `api` service carries it
+# so that `docker compose up --build` triggers exactly one build, which tags the
+# image as `apollo-backend`. All other services then reuse that image.
+x-app: &app
+  image: apollo-backend
+  env_file: .env          # supplies APPLE_KEY_ID, APPLE_TEAM_ID, REDDIT_CLIENT_ID, etc.
+  restart: unless-stopped
+  volumes:
+    - ./secrets:/etc/secrets:ro   # mount your apple.p8 here (see .env.example)
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis-queues:
+      condition: service_healthy
+    redis-locks:
+      condition: service_healthy
+    migrate:
+      condition: service_completed_successfully
+    otelcol:
+      condition: service_started
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Infrastructure
+  # ---------------------------------------------------------------------------
+
+  postgres:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_DB: apollo
+      POSTGRES_USER: apollo
+      POSTGRES_PASSWORD: apollo
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U apollo]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis-queues:
+    image: redis:7-alpine
+    # Disable persistence — queues are ephemeral; data loss on restart is acceptable.
+    command: redis-server --save "" --appendonly no
+    volumes:
+      - redis_queues_data:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis-locks:
+    image: redis:7-alpine
+    command: redis-server --save "" --appendonly no
+    volumes:
+      - redis_locks_data:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Runs all SQL migrations and exits. App services wait for it to complete.
+  migrate:
+    image: migrate/migrate
+    command:
+      - -path=/migrations
+      - -database=postgres://apollo:apollo@postgres/apollo?sslmode=disable
+      - up
+    volumes:
+      - ./migrations:/migrations:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: on-failure
+
+  # OTLP collector — the Honeycomb launcher requires a working gRPC endpoint that
+  # supports traces, metrics, AND logs. This collector accepts all three and drops
+  # them (debug exporter, verbosity=basic).
+  otelcol:
+    image: otel/opentelemetry-collector-contrib:latest
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
+
+  # ---------------------------------------------------------------------------
+  # API — the only service with build: so the image is compiled exactly once.
+  # ---------------------------------------------------------------------------
+
+  api:
+    <<: *app
+    build: .
+    command: api
+    ports:
+      - "4000:4000"
+    environment:
+      <<: *infra-env
+      PORT: "4000"
+
+  # ---------------------------------------------------------------------------
+  # Scheduler — enqueues account/watcher jobs every 5 s
+  # ---------------------------------------------------------------------------
+
+  scheduler:
+    <<: *app
+    command: scheduler
+    environment:
+      <<: *infra-env
+
+  # ---------------------------------------------------------------------------
+  # Workers
+  # ---------------------------------------------------------------------------
+
+  # Core inbox notifications (comment replies, mentions, DMs)
+  worker-notifications:
+    <<: *app
+    command: worker --queue notifications --consumers 16
+    environment:
+      <<: *infra-env
+
+  # Recovers jobs that got stuck in the queue
+  worker-stuck:
+    <<: *app
+    command: worker --queue stuck-notifications --consumers 8
+    environment:
+      <<: *infra-env
+
+  # User watcher (alerts when a specific user posts)
+  worker-users:
+    <<: *app
+    command: worker --queue users
+    environment:
+      <<: *infra-env
+
+  # Subreddit watcher (keyword/flair/author filters on new posts)
+  worker-subreddits:
+    <<: *app
+    command: worker --queue subreddits
+    environment:
+      <<: *infra-env
+
+  # Trending posts watcher
+  worker-trending:
+    <<: *app
+    command: worker --queue trending
+    environment:
+      <<: *infra-env
+
+  # Live Activities (iOS Dynamic Island / Lock Screen widgets)
+  worker-live-activities:
+    <<: *app
+    command: worker --queue live-activities
+    environment:
+      <<: *infra-env
+
+volumes:
+  postgres_data:
+  redis_queues_data:
+  redis_locks_data:

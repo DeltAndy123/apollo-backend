@@ -292,7 +292,7 @@ func (lac *liveActivitiesConsumer) Consume(delivery rmq.Delivery) {
 
 	notification := &apns2.Notification{
 		DeviceToken: la.APNSToken,
-		Topic:       "com.christianselig.Apollo.push-type.liveactivity",
+		Topic:       os.Getenv("APPLE_BUNDLE_ID") + ".push-type.liveactivity",
 		PushType:    "liveactivity",
 		Payload:     bb,
 	}

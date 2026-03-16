@@ -261,7 +261,7 @@ func (uc *usersConsumer) Consume(delivery rmq.Delivery) {
 		payload := payloadFromUserPost(post)
 
 		notification := &apns2.Notification{}
-		notification.Topic = "com.christianselig.Apollo"
+		notification.Topic = os.Getenv("APPLE_BUNDLE_ID")
 
 		for _, watcher := range notifs {
 			if err := uc.watcherRepo.IncrementHits(ctx, watcher.ID); err != nil {

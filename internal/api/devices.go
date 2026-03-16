@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -67,7 +68,7 @@ func (a *api) testDeviceHandler(w http.ResponseWriter, r *http.Request) {
 
 	body := fmt.Sprintf("Active usernames are: %s. Tap me for more info!", english.OxfordWordSeries(users, "and"))
 	notification := &apns2.Notification{}
-	notification.Topic = "com.christianselig.Apollo"
+	notification.Topic = os.Getenv("APPLE_BUNDLE_ID")
 	notification.DeviceToken = d.APNSToken
 	notification.Payload = payload.
 		NewPayload().

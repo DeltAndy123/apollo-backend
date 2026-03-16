@@ -6,10 +6,16 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 )
 
-const userAgent = "server:apollo-backend:v1.0 (by /u/iamthatis) contact me@christianselig.com"
+func userAgent() string {
+	if ua := os.Getenv("REDDIT_USER_AGENT"); ua != "" {
+		return ua
+	}
+	return "server:apollo-backend:v1.0"
+}
 
 type Request struct {
 	body               url.Values
@@ -57,7 +63,7 @@ func (r *Request) HTTPRequest(ctx context.Context) (*http.Request, error) {
 	req.URL.RawQuery = r.query.Encode()
 
 	req.Header.Add("Accept", "application/json")
-	req.Header.Add("User-Agent", userAgent)
+	req.Header.Add("User-Agent", userAgent())
 
 	if r.token != "" {
 		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", r.token))

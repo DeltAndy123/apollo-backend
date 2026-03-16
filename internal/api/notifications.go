@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/gorilla/mux"
 	"github.com/sideshow/apns2"
@@ -46,7 +47,7 @@ func generateNotificationTester(a *api, fun notificationGenerator) func(w http.R
 		fun(p)
 
 		notification := &apns2.Notification{}
-		notification.Topic = "com.christianselig.Apollo"
+		notification.Topic = os.Getenv("APPLE_BUNDLE_ID")
 		notification.DeviceToken = d.APNSToken
 		notification.Payload = p
 
