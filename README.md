@@ -8,7 +8,8 @@ This guide covers running the Apollo push notification backend yourself, paired 
 - A Reddit account and a Reddit API key (created at https://www.reddit.com/prefs/apps)
   - **NOTE**: Due to the new [Responsible Builder Policy](https://www.reddit.com/r/redditdev/comments/1oug31u/introducing_the_responsible_builder_policy_new/), if you have not already created an API key, you cannot do so anymore. See https://github.com/JeffreyCA/Apollo-ImprovedCustomApi?tab=readme-ov-file#dont-have-an-api-key for workarounds to get an API key.
 - An [Apple Developer Program](https://developer.apple.com/programs/) membership ($99/year) — required for push notifications
-- The Apollo-ImprovedCustomAPI tweak installed on your device (use [my fork](https://github.com/DeltAndy123/Apollo-ImprovedCustomApi) as it has the option to configure push notification server URL)
+- The Apollo-ImprovedCustomAPI tweak installed on your device
+  - Use [my fork](https://github.com/DeltAndy123/Apollo-ImprovedCustomApi) as it has the option to configure push notification server URL
 
 ---
 
@@ -78,7 +79,7 @@ Tools that can do this:
 The bundle ID you set here must match `APPLE_BUNDLE_ID` in `.env`.
 
 > [!IMPORTANT]
-> Free Apple Developer accounts cannot be used for push notifications. Anyone who sideloads IPA must have a paid Apple Developer Program membership, or must have access to a signing service such as [ArcticSign](https://arcticsign.app/) to use push notifications.
+> Free Apple Developer accounts cannot be used for push notifications. Anyone who sideloads the IPA must have a paid Apple Developer Program membership, or must have access to a signing service such as [ArcticSign](https://arcticsign.app/) to use push notifications.
 
 ---
 
