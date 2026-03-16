@@ -134,6 +134,7 @@ func (a *api) Routes() *mux.Router {
 
 	r.Use(a.loggingMiddleware)
 	r.Use(a.requestIdMiddleware)
+	r.Use(a.tokenAuthMiddleware)
 
 	return r
 }
