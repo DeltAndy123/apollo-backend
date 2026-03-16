@@ -498,6 +498,9 @@ func enqueueAccounts(ctx context.Context, logger *zap.Logger, statsd *statsd.Cli
 	chunkSize := int(math.Ceil(float64(len(ids)) / float64(accountEnqueueSeconds)))
 	for i := 0; i < accountEnqueueSeconds; i++ {
 		left := i * chunkSize
+		if left >= len(ids) {
+			break
+		}
 		right := (i + 1) * chunkSize
 		if right > len(ids) {
 			right = len(ids)
@@ -508,7 +511,7 @@ func enqueueAccounts(ctx context.Context, logger *zap.Logger, statsd *statsd.Cli
 	_ = statsd.Histogram("apollo.queue.runtime", float64(time.Since(now).Milliseconds()), []string{"queue:notifications"}, 1)
 
 	wg := sync.WaitGroup{}
-	for i := 0; i < accountEnqueueSeconds; i++ {
+	for i := 0; i < len(chunks); i++ {
 		wg.Add(1)
 		go func(ctx context.Context, offset int) {
 			defer wg.Done()
