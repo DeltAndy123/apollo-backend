@@ -90,9 +90,13 @@ func NewAPI(ctx context.Context, logger *zap.Logger, statsd *statsd.Client, redi
 }
 
 func (a *api) Server(port int) *http.Server {
+	var handler http.Handler = a.Routes()
+	if _, ok := os.LookupEnv("BUGSNAG_API_KEY"); ok {
+		handler = bugsnag.Handler(handler)
+	}
 	return &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
-		Handler: bugsnag.Handler(a.Routes()),
+		Handler: handler,
 	}
 }
 
