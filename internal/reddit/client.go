@@ -13,8 +13,6 @@ import (
 	"github.com/DataDog/datadog-go/statsd"
 	"github.com/go-redis/redis/v8"
 	"github.com/valyala/fastjson"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -29,7 +27,6 @@ const (
 type Client struct {
 	id          string
 	secret      string
-	tracer      trace.Tracer
 	client      *http.Client
 	pool        *fastjson.ParserPool
 	statsd      statsd.ClientInterface
@@ -84,7 +81,7 @@ func PostIDFromContext(context string) string {
 	return ""
 }
 
-func NewClient(id, secret string, tracer trace.Tracer, statsd statsd.ClientInterface, redis *redis.Client, connLimit int, opts ...RequestOption) *Client {
+func NewClient(id, secret string, statsd statsd.ClientInterface, redis *redis.Client, connLimit int, opts ...RequestOption) *Client {
 	pool := &fastjson.ParserPool{}
 
 	// Preallocate pool
@@ -103,14 +100,13 @@ func NewClient(id, secret string, tracer trace.Tracer, statsd statsd.ClientInter
 	t.MaxIdleConnsPerHost = 100
 
 	httpClient := &http.Client{
-		Transport: otelhttp.NewTransport(t),
+		Transport: t,
 		Timeout:   4 * time.Second,
 	}
 
 	return &Client{
 		id,
 		secret,
-		tracer,
 		httpClient,
 		pool,
 		statsd,

@@ -16,7 +16,6 @@ import (
 	"github.com/sideshow/apns2"
 	"github.com/sideshow/apns2/payload"
 	"github.com/sideshow/apns2/token"
-	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 
 	"github.com/christianselig/apollo-backend/internal/domain"
@@ -28,7 +27,6 @@ type subredditsWorker struct {
 	context.Context
 
 	logger *zap.Logger
-	tracer trace.Tracer
 	statsd *statsd.Client
 	db     *pgxpool.Pool
 	redis  *redis.Client
@@ -49,11 +47,10 @@ const (
 	subredditNotificationBodyFormat  = "r/%s: \u201c%s\u201d"
 )
 
-func NewSubredditsWorker(ctx context.Context, logger *zap.Logger, tracer trace.Tracer, statsd *statsd.Client, db *pgxpool.Pool, redis *redis.Client, queue rmq.Connection, consumers int) Worker {
+func NewSubredditsWorker(ctx context.Context, logger *zap.Logger, statsd *statsd.Client, db *pgxpool.Pool, redis *redis.Client, queue rmq.Connection, consumers int) Worker {
 	reddit := reddit.NewClient(
 		os.Getenv("REDDIT_CLIENT_ID"),
 		os.Getenv("REDDIT_CLIENT_SECRET"),
-		tracer,
 		statsd,
 		redis,
 		consumers,
@@ -76,7 +73,6 @@ func NewSubredditsWorker(ctx context.Context, logger *zap.Logger, tracer trace.T
 	return &subredditsWorker{
 		ctx,
 		logger,
-		tracer,
 		statsd,
 		db,
 		redis,

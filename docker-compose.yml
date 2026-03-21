@@ -14,10 +14,6 @@ x-infra-env: &infra-env
   # StatsD client requires an address; UDP to localhost silently drops metrics when
   # nothing is listening, which is fine for local development.
   STATSD_URL: localhost:8125
-  # Point OTLP at the OTel Collector (accepts traces, metrics, and logs).
-  OTEL_EXPORTER_OTLP_ENDPOINT: "otelcol:4317"
-  # OTel Collector gRPC is plaintext in our setup.
-  OTEL_EXPORTER_OTLP_INSECURE: "true"
 
 # Base definition shared by every Go service.
 # build: is intentionally NOT in this anchor — only the `api` service carries it
@@ -38,8 +34,6 @@ x-app: &app
       condition: service_healthy
     migrate:
       condition: service_completed_successfully
-    otelcol:
-      condition: service_started
 
 services:
 
@@ -97,15 +91,6 @@ services:
       postgres:
         condition: service_healthy
     restart: on-failure
-
-  # OTLP collector — the Honeycomb launcher requires a working gRPC endpoint that
-  # supports traces, metrics, AND logs. This collector accepts all three and drops
-  # them (debug exporter, verbosity=basic).
-  otelcol:
-    image: otel/opentelemetry-collector-contrib:latest
-    command: ["--config=/etc/otelcol/config.yaml"]
-    volumes:
-      - ./otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
 
   # ---------------------------------------------------------------------------
   # API — the only service with build: so the image is compiled exactly once.

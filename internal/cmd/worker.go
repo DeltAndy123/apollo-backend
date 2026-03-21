@@ -6,7 +6,6 @@ import (
 	"runtime"
 
 	"github.com/spf13/cobra"
-	"go.opentelemetry.io/otel"
 
 	"github.com/christianselig/apollo-backend/internal/cmdutil"
 	"github.com/christianselig/apollo-backend/internal/worker"
@@ -50,8 +49,6 @@ func WorkerCmd(ctx context.Context) *cobra.Command {
 			}
 			defer statsd.Close()
 
-			tracer := otel.Tracer(tag)
-
 			db, err := cmdutil.NewDatabasePool(ctx, consumers/16)
 			if err != nil {
 				return err
@@ -80,7 +77,7 @@ func WorkerCmd(ctx context.Context) *cobra.Command {
 				return fmt.Errorf("invalid queue: %s", queueID)
 			}
 
-			worker := workerFn(ctx, logger, tracer, statsd, db, redis, queue, consumers)
+			worker := workerFn(ctx, logger, statsd, db, redis, queue, consumers)
 			if err := worker.Start(); err != nil {
 				return err
 			}
